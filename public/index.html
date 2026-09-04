@@ -2,51 +2,90 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Reward App</title>
     <style>
-        body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 20px; margin: 0; }
-        input, button { padding: 15px; margin: 10px 0; width: 90%; max-width: 300px; border-radius: 8px; border: none; font-size: 16px; }
-        button { background: #007bff; color: white; cursor: pointer; font-weight: bold; }
-        button:active { opacity: 0.8; }
-        .hidden { display: none; }
-        .card { background: #222; padding: 20px; border-radius: 10px; margin: 10px auto; max-width: 400px; }
-        #auth-msg { color: red; margin: 10px 0; }
+        * { -webkit-tap-highlight-color: transparent; }
+        body { 
+            background: #111; 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            text-align: center; 
+            padding: 20px; 
+            margin: 0;
+            touch-action: manipulation;
+        }
+        input { 
+            padding: 15px; 
+            margin: 10px 0; 
+            width: 90%; 
+            max-width: 300px; 
+            border-radius: 8px; 
+            border: 2px solid #333; 
+            font-size: 16px;
+            background: #222;
+            color: white;
+        }
+        button { 
+            padding: 15px 30px; 
+            margin: 10px 0; 
+            width: 90%; 
+            max-width: 300px;
+            border-radius: 8px; 
+            border: none; 
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        button:active { transform: scale(0.98); }
+        .login-btn { background: #007bff; color: white; }
+        .register-btn { background: #28a745; color: white; }
+        .hidden { display: none !important; }
+        .card { background: #222; padding: 20px; border-radius: 10px; margin: 15px auto; max-width: 400px; }
+        #auth-msg { color: #ff6b6b; margin: 15px 0; font-weight: bold; }
+        .success { color: #51cf66 !important; }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <h2>Login / Register</h2>
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Password">
-        <button id="login-btn">Login</button>
-        <button id="register-btn" style="background:#28a745">Register</button>
+        <h1 style="margin-bottom: 30px;">💰 Reward App</h1>
+        <div style="background:#222; padding:20px; border-radius:10px; margin-bottom:20px;">
+            <h2 style="margin-top:0;">Login / Register</h2>
+            <input type="email" id="email" placeholder="Enter your email" autocomplete="email">
+            <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+            <button class="login-btn" onclick="handleLogin()">Login</button>
+            <button class="register-btn" onclick="handleRegister()">Register</button>
+        </div>
         <p id="auth-msg"></p>
     </div>
 
     <div id="dashboard" class="hidden">
+        <h1 style="margin-bottom: 20px;">🎮 Dashboard</h1>
+        
         <div class="card">
-            <h3>Balance: <span id="balance">0</span> pts</h3>
-            <p>Value: $<span id="value">0.00</span></p>
-            <p style="font-size:12px; color:#888">Need 667 pts ($100) to withdraw</p>
+            <h2 style="margin:0; color:#4dabf7;">Balance: <span id="balance">0</span> pts</h2>
+            <p style="margin:5px 0; color:#ffd43b;">Value: $<span id="value">0.00</span></p>
+            <p style="font-size:12px; color:#888; margin:10px 0 0 0;">Need 667 pts ($100) to withdraw</p>
         </div>
 
         <div class="card">
-            <h3>Daily Spin</h3>
-            <button id="spin-btn">Spin (Watch Ad)</button>
+            <h3 style="margin-top:0;">🎰 Daily Spin</h3>
+            <button class="login-btn" onclick="doAction('/api/spin')">Spin (Watch Ad)</button>
         </div>
 
         <div class="card">
-            <h3>Mining</h3>
-            <button id="mine-btn" style="background:#fd7e14">Mine (Watch Ad)</button>
+            <h3 style="margin-top:0;">⛏️ Mining</h3>
+            <button style="background:#fd7e14; color:white;" onclick="doAction('/api/mine')">Mine (Watch Ad)</button>
         </div>
 
         <div class="card">
-            <h3>Withdraw</h3>
-            <button id="withdraw-btn" style="background:#ffc107; color:black">Request $100</button>
+            <h3 style="margin-top:0;">💵 Withdraw</h3>
+            <button style="background:#ffc107; color:black;" onclick="handleWithdraw()">Request $100</button>
         </div>
-        <button id="logout-btn" style="background:#dc3545">Logout</button>
+        
+        <button style="background:#dc3545; color:white;" onclick="handleLogout()">Logout</button>
     </div>
 
     <script>
@@ -55,23 +94,17 @@
 
         if(token) showDashboard();
 
-        // Add click listeners
-        document.getElementById('login-btn').addEventListener('click', login);
-        document.getElementById('register-btn').addEventListener('click', register);
-        document.getElementById('spin-btn').addEventListener('click', () => doAction('/api/spin'));
-        document.getElementById('mine-btn').addEventListener('click', () => doAction('/api/mine'));
-        document.getElementById('withdraw-btn').addEventListener('click', withdraw);
-        document.getElementById('logout-btn').addEventListener('click', logout);
-
-        async function login() {
-            const email = document.getElementById('email').value;
+        async function handleLogin() {
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             
             if(!email || !password) {
-                document.getElementById('auth-msg').innerText = 'Enter email and password';
+                showMessage('Please enter email and password', false);
                 return;
             }
 
+            showMessage('Logging in...', false);
+            
             try {
                 const res = await fetch(`${API}/api/login`, {
                     method: 'POST', 
@@ -83,22 +116,25 @@
                     localStorage.setItem('token', data.token); 
                     showDashboard(); 
                 } else {
-                    document.getElementById('auth-msg').innerText = data.error;
+                    showMessage(data.error || 'Login failed', false);
                 }
             } catch(err) {
-                document.getElementById('auth-msg').innerText = 'Connection error';
+                showMessage('Connection error. Try again.', false);
+                console.error('Login error:', err);
             }
         }
 
-        async function register() {
-            const email = document.getElementById('email').value;
+        async function handleRegister() {
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             
             if(!email || !password) {
-                document.getElementById('auth-msg').innerText = 'Enter email and password';
+                showMessage('Please enter email and password', false);
                 return;
             }
 
+            showMessage('Creating account...', false);
+            
             try {
                 const res = await fetch(`${API}/api/register`, {
                     method: 'POST', 
@@ -110,10 +146,11 @@
                     localStorage.setItem('token', data.token); 
                     showDashboard(); 
                 } else {
-                    document.getElementById('auth-msg').innerText = data.error;
+                    showMessage(data.error || 'Registration failed', false);
                 }
             } catch(err) {
-                document.getElementById('auth-msg').innerText = 'Connection error';
+                showMessage('Connection error. Try again.', false);
+                console.error('Register error:', err);
             }
         }
 
@@ -128,16 +165,21 @@
                 const res = await fetch(`${API}/api/dashboard`, { 
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const data = await res.json();
-                document.getElementById('balance').innerText = data.balance;
-                document.getElementById('value').innerText = (data.balance * 0.15).toFixed(2);
+                if(res.ok) {
+                    const data = await res.json();
+                    document.getElementById('balance').innerText = data.balance;
+                    document.getElementById('value').innerText = (data.balance * 0.15).toFixed(2);
+                }
             } catch(err) {
                 console.error('Balance error:', err);
             }
         }
 
         async function doAction(endpoint) {
-            alert("Simulating Ad Watch for 3 seconds...");
+            alert("📺 Watching ad for 3 seconds...");
+            
+            // Simulate ad watch
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
             try {
                 const res = await fetch(`${API}${endpoint}`, {
@@ -150,17 +192,18 @@
                 });
                 const data = await res.json();
                 if(data.points) { 
-                    alert(`Earned ${data.points} points!`); 
+                    alert(`✅ Earned ${data.points} points!`); 
                     updateBalance(); 
                 } else {
-                    alert(data.error);
+                    alert(data.error || 'Failed');
                 }
             } catch(err) {
                 alert('Connection error');
+                console.error('Action error:', err);
             }
         }
 
-        async function withdraw() {
+        async function handleWithdraw() {
             try {
                 const res = await fetch(`${API}/api/withdraw`, {
                     method: 'POST', 
@@ -174,9 +217,17 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem('token');
-            location.reload();
+        function handleLogout() {
+            if(confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('token');
+                location.reload();
+            }
+        }
+
+        function showMessage(text, isSuccess) {
+            const msgEl = document.getElementById('auth-msg');
+            msgEl.innerText = text;
+            msgEl.className = isSuccess ? 'success' : '';
         }
     </script>
 </body>
