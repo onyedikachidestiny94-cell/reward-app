@@ -5,26 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reward App</title>
     <style>
-        body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
-        input, button { padding: 10px; margin: 5px; width: 90%; max-width: 300px; border-radius: 5px; border: none; }
-        button { background: #007bff; color: white; cursor: pointer; }
+        body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 20px; margin: 0; }
+        input, button { padding: 15px; margin: 10px 0; width: 90%; max-width: 300px; border-radius: 8px; border: none; font-size: 16px; }
+        button { background: #007bff; color: white; cursor: pointer; font-weight: bold; }
+        button:active { opacity: 0.8; }
         .hidden { display: none; }
         .card { background: #222; padding: 20px; border-radius: 10px; margin: 10px auto; max-width: 400px; }
+        #auth-msg { color: red; margin: 10px 0; }
     </style>
 </head>
 <body>
 
-    <!-- Login Screen -->
     <div id="auth-screen">
         <h2>Login / Register</h2>
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Password">
-        <button onclick="login()">Login</button>
-        <button onclick="register()" style="background:#28a745">Register</button>
-        <p id="auth-msg" style="color:red"></p>
+        <button id="login-btn">Login</button>
+        <button id="register-btn" style="background:#28a745">Register</button>
+        <p id="auth-msg"></p>
     </div>
 
-    <!-- Dashboard -->
     <div id="dashboard" class="hidden">
         <div class="card">
             <h3>Balance: <span id="balance">0</span> pts</h3>
@@ -34,19 +34,19 @@
 
         <div class="card">
             <h3>Daily Spin</h3>
-            <button onclick="doAction('/api/spin')">Spin (Watch Ad)</button>
+            <button id="spin-btn">Spin (Watch Ad)</button>
         </div>
 
         <div class="card">
             <h3>Mining</h3>
-            <button onclick="doAction('/api/mine')" style="background:#fd7e14">Mine (Watch Ad)</button>
+            <button id="mine-btn" style="background:#fd7e14">Mine (Watch Ad)</button>
         </div>
 
         <div class="card">
             <h3>Withdraw</h3>
-            <button onclick="withdraw()" style="background:#ffc107; color:black">Request $100</button>
+            <button id="withdraw-btn" style="background:#ffc107; color:black">Request $100</button>
         </div>
-        <button onclick="logout()" style="background:#dc3545">Logout</button>
+        <button id="logout-btn" style="background:#dc3545">Logout</button>
     </div>
 
     <script>
@@ -55,24 +55,66 @@
 
         if(token) showDashboard();
 
+        // Add click listeners
+        document.getElementById('login-btn').addEventListener('click', login);
+        document.getElementById('register-btn').addEventListener('click', register);
+        document.getElementById('spin-btn').addEventListener('click', () => doAction('/api/spin'));
+        document.getElementById('mine-btn').addEventListener('click', () => doAction('/api/mine'));
+        document.getElementById('withdraw-btn').addEventListener('click', withdraw);
+        document.getElementById('logout-btn').addEventListener('click', logout);
+
         async function login() {
-            const res = await fetch(`${API}/api/login`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('password').value })
-            });
-            const data = await res.json();
-            if(data.token) { localStorage.setItem('token', data.token); showDashboard(); }
-            else document.getElementById('auth-msg').innerText = data.error;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if(!email || !password) {
+                document.getElementById('auth-msg').innerText = 'Enter email and password';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/api/login`, {
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if(data.token) { 
+                    localStorage.setItem('token', data.token); 
+                    showDashboard(); 
+                } else {
+                    document.getElementById('auth-msg').innerText = data.error;
+                }
+            } catch(err) {
+                document.getElementById('auth-msg').innerText = 'Connection error';
+            }
         }
 
         async function register() {
-            const res = await fetch(`${API}/api/register`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('password').value })
-            });
-            const data = await res.json();
-            if(data.token) { localStorage.setItem('token', data.token); showDashboard(); }
-            else document.getElementById('auth-msg').innerText = data.error;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if(!email || !password) {
+                document.getElementById('auth-msg').innerText = 'Enter email and password';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/api/register`, {
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if(data.token) { 
+                    localStorage.setItem('token', data.token); 
+                    showDashboard(); 
+                } else {
+                    document.getElementById('auth-msg').innerText = data.error;
+                }
+            } catch(err) {
+                document.getElementById('auth-msg').innerText = 'Connection error';
+            }
         }
 
         function showDashboard() {
@@ -82,32 +124,54 @@
         }
 
         async function updateBalance() {
-            const res = await fetch(`${API}/api/dashboard`, { headers: { Authorization: `Bearer ${token}` }});
-            const data = await res.json();
-            document.getElementById('balance').innerText = data.balance;
-            document.getElementById('value').innerText = (data.balance * 0.15).toFixed(2);
+            try {
+                const res = await fetch(`${API}/api/dashboard`, { 
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await res.json();
+                document.getElementById('balance').innerText = data.balance;
+                document.getElementById('value').innerText = (data.balance * 0.15).toFixed(2);
+            } catch(err) {
+                console.error('Balance error:', err);
+            }
         }
 
         async function doAction(endpoint) {
-            // Simulate Ad Watch
-            alert("Simulating Ad Watch... (Connect Monetag here later)");
+            alert("Simulating Ad Watch for 3 seconds...");
             
-            const res = await fetch(`${API}${endpoint}`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ adVerified: true })
-            });
-            const data = await res.json();
-            if(data.points) { alert(`Earned ${data.points} points!`); updateBalance(); }
-            else alert(data.error);
+            try {
+                const res = await fetch(`${API}${endpoint}`, {
+                    method: 'POST', 
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        Authorization: `Bearer ${token}` 
+                    },
+                    body: JSON.stringify({ adVerified: true })
+                });
+                const data = await res.json();
+                if(data.points) { 
+                    alert(`Earned ${data.points} points!`); 
+                    updateBalance(); 
+                } else {
+                    alert(data.error);
+                }
+            } catch(err) {
+                alert('Connection error');
+            }
         }
 
         async function withdraw() {
-            const res = await fetch(`${API}/api/withdraw`, {
-                method: 'POST', headers: { Authorization: `Bearer ${token}` }
-            });
-            const data = await res.json();
-            alert(data.message || data.error);
-            updateBalance();
+            try {
+                const res = await fetch(`${API}/api/withdraw`, {
+                    method: 'POST', 
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await res.json();
+                alert(data.message || data.error);
+                updateBalance();
+            } catch(err) {
+                alert('Connection error');
+            }
         }
 
         function logout() {
