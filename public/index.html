@@ -13,7 +13,6 @@
             text-align: center; 
             padding: 20px; 
             margin: 0;
-            touch-action: manipulation;
         }
         input { 
             padding: 15px; 
@@ -36,21 +35,30 @@
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
-            touch-action: manipulation;
         }
         button:active { transform: scale(0.98); }
         .login-btn { background: #007bff; color: white; }
         .register-btn { background: #28a745; color: white; }
         .hidden { display: none !important; }
         .card { background: #222; padding: 20px; border-radius: 10px; margin: 15px auto; max-width: 400px; }
-        #auth-msg { color: #ff6b6b; margin: 15px 0; font-weight: bold; }
+        #auth-msg { color: #ff6b6b; margin: 15px 0; font-weight: bold; min-height: 24px; }
+        #debug-info { 
+            background: #1a1a2e; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-top: 20px; 
+            font-size: 12px; 
+            text-align: left;
+            word-break: break-all;
+            color: #888;
+        }
         .success { color: #51cf66 !important; }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <h1 style="margin-bottom: 30px;">💰 Reward App</h1>
+        <h1 style="margin-bottom: 30px;"> Reward App</h1>
         <div style="background:#222; padding:20px; border-radius:10px; margin-bottom:20px;">
             <h2 style="margin-top:0;">Login / Register</h2>
             <input type="email" id="email" placeholder="Enter your email" autocomplete="email">
@@ -59,15 +67,19 @@
             <button class="register-btn" onclick="handleRegister()">Register</button>
         </div>
         <p id="auth-msg"></p>
+        <div id="debug-info">
+            <strong>Debug Info:</strong><br>
+            API URL: <span id="api-url"></span><br>
+            Status: <span id="api-status">Testing...</span>
+        </div>
     </div>
 
     <div id="dashboard" class="hidden">
-        <h1 style="margin-bottom: 20px;">🎮 Dashboard</h1>
+        <h1 style="margin-bottom: 20px;"> Dashboard</h1>
         
         <div class="card">
             <h2 style="margin:0; color:#4dabf7;">Balance: <span id="balance">0</span> pts</h2>
             <p style="margin:5px 0; color:#ffd43b;">Value: $<span id="value">0.00</span></p>
-            <p style="font-size:12px; color:#888; margin:10px 0 0 0;">Need 667 pts ($100) to withdraw</p>
         </div>
 
         <div class="card">
@@ -76,7 +88,7 @@
         </div>
 
         <div class="card">
-            <h3 style="margin-top:0;">⛏️ Mining</h3>
+            <h3 style="margin-top:0;">️ Mining</h3>
             <button style="background:#fd7e14; color:white;" onclick="doAction('/api/mine')">Mine (Watch Ad)</button>
         </div>
 
@@ -91,8 +103,26 @@
     <script>
         const API = window.location.origin;
         let token = localStorage.getItem('token');
+        
+        // Show API URL in debug info
+        document.getElementById('api-url').textContent = API;
+
+        // Test API connection on load
+        testAPIConnection();
 
         if(token) showDashboard();
+
+        async function testAPIConnection() {
+            try {
+                const res = await fetch(`${API}/api/dashboard`);
+                const status = res.status;
+                document.getElementById('api-status').innerHTML = 
+                    `<span style="color:#51cf66">✅ Server OK (Status ${status})</span>`;
+            } catch(err) {
+                document.getElementById('api-status').innerHTML = 
+                    `<span style="color:#ff6b6b"> Server Down</span><br>Error: ${err.message}`;
+            }
+        }
 
         async function handleLogin() {
             const email = document.getElementById('email').value.trim();
@@ -103,15 +133,20 @@
                 return;
             }
 
-            showMessage('Logging in...', false);
+            showMessage('Connecting to server...', false);
             
             try {
+                console.log('Attempting login to:', `${API}/api/login`);
                 const res = await fetch(`${API}/api/login`, {
                     method: 'POST', 
                     headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({ email, password })
                 });
+                
+                console.log('Login response status:', res.status);
                 const data = await res.json();
+                console.log('Login response data:', data);
+                
                 if(data.token) { 
                     localStorage.setItem('token', data.token); 
                     showDashboard(); 
@@ -119,8 +154,8 @@
                     showMessage(data.error || 'Login failed', false);
                 }
             } catch(err) {
-                showMessage('Connection error. Try again.', false);
                 console.error('Login error:', err);
+                showMessage(`Connection error: ${err.message}`, false);
             }
         }
 
@@ -149,8 +184,7 @@
                     showMessage(data.error || 'Registration failed', false);
                 }
             } catch(err) {
-                showMessage('Connection error. Try again.', false);
-                console.error('Register error:', err);
+                showMessage(`Connection error: ${err.message}`, false);
             }
         }
 
@@ -176,9 +210,7 @@
         }
 
         async function doAction(endpoint) {
-            alert("📺 Watching ad for 3 seconds...");
-            
-            // Simulate ad watch
+            alert(" Watching ad for 3 seconds...");
             await new Promise(resolve => setTimeout(resolve, 3000));
             
             try {
@@ -198,8 +230,7 @@
                     alert(data.error || 'Failed');
                 }
             } catch(err) {
-                alert('Connection error');
-                console.error('Action error:', err);
+                alert(`Connection error: ${err.message}`);
             }
         }
 
@@ -213,7 +244,7 @@
                 alert(data.message || data.error);
                 updateBalance();
             } catch(err) {
-                alert('Connection error');
+                alert(`Connection error: ${err.message}`);
             }
         }
 
